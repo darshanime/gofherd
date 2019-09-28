@@ -11,7 +11,7 @@ Gofherd provides:
 - Persistence
   - State is saved so it can be continued after pause/crash.
 - HTTP APIs
-  - To for monitoring, dynamically change the parallelism.
+  - For monitoring, to dynamically change the parallelism etc.
 
 ### Example
 
@@ -19,26 +19,33 @@ Gofherd provides:
 package main
 
 func main() {
-    gf := gopherd.Init(
-        Work: GetBusinessLogic(),
-        Workers: 10
-    )
+	processinglogic := func(w Work) Result {
+		fmt.Printf("got work to process: %s\n", w.ID)
+		return Success
+	}
 
-    input := gf.GetInputHose()
-    output := gf.GetOutputHose()
+	gf := New(processinglogic)
+	gf.SetGopherd(10)
+	inputChan := gf.InputChan()
 
-    go LoadInput(input chan)
-    go GetOutputHose()
-    gf.Start()
-}
+	loadFunc := func() {
+		for i := 0; i < 1000; i++ {
+			w := Work{ID: fmt.Sprintf("%d", i)}
+			fmt.Printf("got work to input: %s\n", w.ID)
+			inputChan <- w
+		}
+		close(inputChan)
+	}
 
-func GetBusinessLogic(input, output chan interface{}) func (interface{}) gf.Status {
-    businessLogic := func (u interface{}) gf.Status {
-        input = <-output
-        fmt.Printf("moved one from output to input")
-        return gf.Status
-    }
-    return businessLogic
+	go loadFunc()
+
+	gf.Start()
+
+	outputChan := gf.OutputChan()
+	for i := 0; i < 1000; i++ {
+		w := <-outputChan
+		fmt.Printf("got work output result: %s\n", w.Status())
+	}
 }
 ```
 
