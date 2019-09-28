@@ -83,3 +83,7 @@ The `Body` field can be anything that makes sense for the usecase at hand.
 
 On calling `gf.GetInputHose()`, a send only channel `chan<- Work` is returned. It can be populated with the `Work` entries by the user.
 On calling `gf.GetOutputHose()`, a receive only channel `chan-> Work` is returned. It can be used to read the statuss for successfully processed work units.
+
+### Gotchas
+- Do not close the input channel after you are done loading the input, it's being used as the retry queue as well (this may change in the future)
+- Do not use a gofherd of size 1, since that gopher may have to put the work unit on the retry queue and it will deadlock on it.

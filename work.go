@@ -31,6 +31,14 @@ type Work struct {
 	status Status
 }
 
+func (w *Work) RetryCount() int {
+	return w.retry
+}
+
+func (w *Work) IncrementRetries() {
+	w.retry = w.retry + 1
+}
+
 func (w *Work) SetResult(result interface{}) {
 	w.result = result
 }
