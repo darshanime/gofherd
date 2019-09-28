@@ -5,7 +5,7 @@ type Gofherd struct {
 	output          chan Work
 	retry           chan Work
 	processingLogic func(Work) Status
-	gofherd         int
+	herdSize        int
 	maxRetries      int
 }
 
@@ -26,8 +26,8 @@ func (gf *Gofherd) CloseInputChan() {
 	close(gf.input)
 }
 
-func (gf *Gofherd) SetGopherd(num int) {
-	gf.gofherd = num
+func (gf *Gofherd) SetHerdSize(num int) {
+	gf.herdSize = num
 }
 
 func (gf *Gofherd) SetMaxRetries(num int) {
@@ -80,7 +80,7 @@ func (gf *Gofherd) handleInput(work Work) {
 }
 
 func (gf *Gofherd) Start() {
-	for i := 0; i < gf.gofherd; i++ {
+	for i := 0; i < gf.herdSize; i++ {
 		go gf.initGopher()
 	}
 }

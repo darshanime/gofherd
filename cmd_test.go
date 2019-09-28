@@ -11,10 +11,8 @@ func randomStatus() Status {
 }
 
 func getBasicGopherd(maxRetries, workUnits, gofherdSize int, status Status) *Gofherd {
-	gf := New(func(w Work) Status {
-		return status
-	})
-	gf.SetGopherd(gofherdSize)
+	gf := New(func(w Work) Status { return status })
+	gf.SetHerdSize(gofherdSize)
 	gf.SetMaxRetries(maxRetries)
 	inputChan := gf.InputChan()
 
