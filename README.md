@@ -18,19 +18,25 @@ Gofherd provides:
 ```go
 package main
 
+import (
+	"fmt"
+
+	gf "github.com/darshanime/gofherd"
+)
+
 func main() {
-	processinglogic := func(w Work) Result {
+	processinglogic := func(w gf.Work) gf.Result {
 		fmt.Printf("got work to process: %s\n", w.ID)
-		return Success
+		return gf.Success
 	}
 
-	gf := New(processinglogic)
-	gf.SetGopherd(10)
-	inputChan := gf.InputChan()
+	herd := gf.New(processinglogic)
+	herd.SetGopherd(10)
+	inputChan := herd.InputChan()
 
 	loadFunc := func() {
 		for i := 0; i < 1000; i++ {
-			w := Work{ID: fmt.Sprintf("%d", i)}
+			w := gf.Work{ID: fmt.Sprintf("%d", i)}
 			fmt.Printf("got work to input: %s\n", w.ID)
 			inputChan <- w
 		}
@@ -39,14 +45,15 @@ func main() {
 
 	go loadFunc()
 
-	gf.Start()
+	herd.Start()
 
-	outputChan := gf.OutputChan()
+	outputChan := herd.OutputChan()
 	for i := 0; i < 1000; i++ {
 		w := <-outputChan
-		fmt.Printf("got work output result: %s\n", w.Status())
+		fmt.Printf("got work output result: %d\n", w.Status())
 	}
 }
+
 ```
 
 ### Specification
