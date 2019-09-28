@@ -6,7 +6,7 @@ import (
 )
 
 func TestGopherd(t *testing.T) {
-	gf := New(func(w Work) Result {
+	gf := New(func(w Work) Status {
 		return Success
 	})
 	gf.SetGopherd(10)

@@ -1,23 +1,23 @@
 package gofherd
 
-type Result int
+type Status int
 
 const (
-	Unprocessed Result = iota
+	Unprocessed Status = iota
 	Success
 	Retry
 	Failure
 )
 
-var resultStrings = map[Result]string{
+var statusStrings = map[Status]string{
 	Unprocessed: "unprocessed",
 	Success:     "success",
 	Retry:       "retry",
 	Failure:     "failure",
 }
 
-func (r Result) String() string {
-	if val, ok := resultStrings[r]; ok {
+func (r Status) String() string {
+	if val, ok := statusStrings[r]; ok {
 		return val
 	}
 	return "unknown"
@@ -28,17 +28,17 @@ type Work struct {
 	Body   interface{}
 	retry  int
 	result interface{}
-	status Result
+	status Status
 }
 
 func (w *Work) SetResult(result interface{}) {
 	w.result = result
 }
 
-func (w *Work) setStatus(result Result) {
-	w.status = result
+func (w *Work) setStatus(status Status) {
+	w.status = status
 }
 
-func (w *Work) Status() Result {
+func (w *Work) Status() Status {
 	return w.status
 }

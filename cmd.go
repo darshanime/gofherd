@@ -3,12 +3,12 @@ package gofherd
 type Gofherd struct {
 	input           chan Work
 	output          chan Work
-	processingLogic func(Work) Result
+	processingLogic func(Work) Status
 	gofherd         int
 	retry           int
 }
 
-func New(processingLogic func(Work) Result) *Gofherd {
+func New(processingLogic func(Work) Status) *Gofherd {
 	return &Gofherd{
 		processingLogic: processingLogic,
 		input:           make(chan Work),
@@ -34,8 +34,8 @@ func (gf *Gofherd) initGopher() {
 		if !ok {
 			return
 		}
-		result := gf.processingLogic(work)
-		work.setStatus(result)
+		status := gf.processingLogic(work)
+		work.setStatus(status)
 		gf.output <- work
 	}
 }

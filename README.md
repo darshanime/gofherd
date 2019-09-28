@@ -1,6 +1,6 @@
 ## Gofherd
 
-Gofherd (`gof-herd`), is a small framework for running user defined tasks with bounded parallelism. It's simple interface gives you a channel to put tasks into, allows you to define a function which has "processing logic" and gives you an output chan to read results from.
+Gofherd (`gof-herd`), is a small framework for running user defined tasks with bounded parallelism. It's simple interface gives you a channel to put tasks into, allows you to define a function which has "processing logic" and gives you an output chan to read statuss from.
 
 
 Gofherd provides:
@@ -25,7 +25,7 @@ import (
 )
 
 func main() {
-	processinglogic := func(w gf.Work) gf.Result {
+	processinglogic := func(w gf.Work) gf.Status {
 		fmt.Printf("got work to process: %s\n", w.ID)
 		return gf.Success
 	}
@@ -50,10 +50,9 @@ func main() {
 	outputChan := herd.OutputChan()
 	for i := 0; i < 1000; i++ {
 		w := <-outputChan
-		fmt.Printf("got work output result: %d\n", w.Status())
+		fmt.Printf("got work output status: %s\n", w.Status())
 	}
 }
-
 ```
 
 ### Specification
@@ -83,4 +82,4 @@ The `ID` field is used to track status of the work unit, retry count etc.
 The `Body` field can be anything that makes sense for the usecase at hand.
 
 On calling `gf.GetInputHose()`, a send only channel `chan<- Work` is returned. It can be populated with the `Work` entries by the user.
-On calling `gf.GetOutputHose()`, a receive only channel `chan-> Work` is returned. It can be used to read the results for successfully processed work units.
+On calling `gf.GetOutputHose()`, a receive only channel `chan-> Work` is returned. It can be used to read the statuss for successfully processed work units.
