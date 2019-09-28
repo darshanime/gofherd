@@ -71,3 +71,27 @@ func TestGopherdFailure(t *testing.T) {
 		}
 	}
 }
+
+func TestGopherdNew(t *testing.T) {
+	gf := New(func(Work) Status { return Success })
+
+	inputChan := gf.InputChan()
+	if inputChan != gf.input {
+		t.Fatal("could not get input chan using InputChan()")
+	}
+
+	outputChan := gf.OutputChan()
+	if outputChan != gf.output {
+		t.Fatal("could not get output chan using OutputChan()")
+	}
+
+	gf.SetHerdSize(10)
+	if gf.herdSize != 10 {
+		t.Fatal("could not set herd size using SetHerdSize()")
+	}
+
+	gf.SetMaxRetries(10)
+	if gf.maxRetries != 10 {
+		t.Fatal("could not set maxRetries using SetMaxRetries()")
+	}
+}

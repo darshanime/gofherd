@@ -2,7 +2,7 @@ package gofherd
 
 import "testing"
 
-func TestWork(t *testing.T) {
+func TestWorkMethods(t *testing.T) {
 	w := Work{ID: "abc"}
 
 	w.setStatus(Success)
