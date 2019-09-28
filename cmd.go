@@ -1,10 +1,9 @@
 package gofherd
 
-import "fmt"
-
 type Gofherd struct {
 	input           chan Work
 	output          chan Work
+	retry           chan Work
 	processingLogic func(Work) Status
 	gofherd         int
 	maxRetries      int
@@ -15,11 +14,16 @@ func New(processingLogic func(Work) Status) *Gofherd {
 		processingLogic: processingLogic,
 		input:           make(chan Work),
 		output:          make(chan Work),
+		retry:           make(chan Work),
 	}
 }
 
 func (gf *Gofherd) InputChan() chan<- Work {
 	return gf.input
+}
+
+func (gf *Gofherd) CloseInputChan() {
+	close(gf.input)
 }
 
 func (gf *Gofherd) SetGopherd(num int) {
@@ -35,21 +39,44 @@ func (gf *Gofherd) OutputChan() <-chan Work {
 }
 
 func (gf *Gofherd) initGopher() {
+	var work Work
+	var ok bool
 	for {
-		work, ok := <-gf.input
-		if !ok {
-			return
+		select {
+		case work, ok = <-gf.input:
+			if !ok {
+				goto handleRetries
+			}
+			gf.handleInput(work)
+		case work, ok = <-gf.retry:
+			if !ok {
+				return
+			}
+			gf.handleInput(work)
 		}
-		status := gf.processingLogic(work)
-		work.setStatus(status)
-		if status == Retry && work.RetryCount() < gf.maxRetries {
-			fmt.Printf("in retry, %d\n", work.RetryCount())
-			work.IncrementRetries()
-			gf.input <- work
-			continue
-		}
-		gf.output <- work
 	}
+handleRetries:
+	for work := range gf.retry {
+		gf.handleInput(work)
+	}
+	close(gf.retry)
+}
+
+func (gf *Gofherd) handleInput(work Work) {
+	status := gf.processingLogic(work)
+	work.setStatus(status)
+	if work.Status() == Success || work.Status() == Failure {
+		gf.output <- work
+		return
+	}
+
+	if work.Status() == Retry && work.RetryCount() < gf.maxRetries {
+		work.IncrementRetries()
+		gf.retry <- work
+		return
+	}
+	work.setStatus(Failure)
+	gf.output <- work
 }
 
 func (gf *Gofherd) Start() {

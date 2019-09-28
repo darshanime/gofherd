@@ -1,8 +1,6 @@
 package gofherd
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestWork(t *testing.T) {
 	w := Work{ID: "abc"}
@@ -17,5 +15,4 @@ func TestWork(t *testing.T) {
 	if result != "xyz" {
 		t.Fatal("could not set result as xyz for work")
 	}
-
 }
