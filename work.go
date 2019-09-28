@@ -42,3 +42,7 @@ func (w *Work) setStatus(status Status) {
 func (w *Work) Status() Status {
 	return w.status
 }
+
+func (w *Work) Result() interface{} {
+	return w.result
+}
