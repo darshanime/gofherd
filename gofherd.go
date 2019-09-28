@@ -1,5 +1,11 @@
 package gofherd
 
+import (
+	"net/http"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
 type Gofherd struct {
 	input           chan Work
 	output          chan Work
@@ -80,6 +86,8 @@ func (gf *Gofherd) handleInput(work Work) {
 }
 
 func (gf *Gofherd) Start() {
+	go http.ListenAndServe(":2112", promhttp.Handler())
+
 	for i := 0; i < gf.herdSize; i++ {
 		go gf.initGopher()
 	}
