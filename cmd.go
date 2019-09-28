@@ -72,7 +72,7 @@ func (gf *Gofherd) handleInput(work Work) {
 
 	if work.Status() == Retry && work.RetryCount() < gf.maxRetries {
 		work.IncrementRetries()
-		gf.retry <- work
+		go func() { gf.retry <- work }()
 		return
 	}
 	work.setStatus(Failure)

@@ -41,9 +41,9 @@ func TestGopherdSuccess(t *testing.T) {
 }
 
 func TestGopherdRetries(t *testing.T) {
-	maxRetries := 10
-	workUnits := 1
-	gofherdSize := 2
+	maxRetries := 1000
+	workUnits := 1000
+	gofherdSize := 1
 	gf := getBasicGopherd(maxRetries, workUnits, gofherdSize, Retry)
 	gf.Start()
 
