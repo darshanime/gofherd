@@ -34,7 +34,7 @@ func TestGopherdSuccess(t *testing.T) {
 	outputChan := gf.OutputChan()
 	for i := 0; i < workUnits; i++ {
 		w := <-outputChan
-		if w.Status() != Success && w.RetryCount() != 0 {
+		if w.Status() != Success || w.RetryCount() != 0 {
 			t.Fatalf("did not receive expected status in output, expected: %s, got: %s\n", Success, w.Status())
 		}
 	}
@@ -50,7 +50,7 @@ func TestGopherdRetries(t *testing.T) {
 	outputChan := gf.OutputChan()
 	for i := 0; i < workUnits; i++ {
 		w := <-outputChan
-		if w.Status() != Failure && w.RetryCount() != maxRetries {
+		if w.Status() != Failure || w.RetryCount() != maxRetries {
 			t.Fatalf("did not receive expected status in output, expected: %s, got: %s\n", Failure, w.Status())
 		}
 	}
@@ -66,7 +66,7 @@ func TestGopherdFailure(t *testing.T) {
 	outputChan := gf.OutputChan()
 	for i := 0; i < workUnits; i++ {
 		w := <-outputChan
-		if w.Status() != Failure && w.RetryCount() != 0 {
+		if w.Status() != Failure || w.RetryCount() != 0 {
 			t.Fatalf("did not receive expected status in output, expected: %s, got: %s\n", Failure, w.Status())
 		}
 	}
