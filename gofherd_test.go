@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"testing"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
@@ -16,15 +17,47 @@ func getBasicGopherd(maxRetries, workUnits, gofherdSize int, status Status) *Gof
 	gf := New(func(w Work) Status { return status })
 	gf.SetHerdSize(gofherdSize)
 	gf.SetMaxRetries(maxRetries)
-	inputChan := gf.InputChan()
 
 	go func() {
 		for i := 0; i < workUnits; i++ {
-			inputChan <- Work{ID: fmt.Sprintf("%d", i)}
+			gf.SendWork(Work{ID: fmt.Sprintf("%d", i)})
 		}
-		close(inputChan)
+		gf.CloseInputChan()
 	}()
 	return gf
+}
+
+func assertAllChannelsClosed(herd *Gofherd, t *testing.T) {
+	result := make(chan struct{})
+	go func() {
+		select {
+		case work, ok := <-herd.input.hose:
+			if ok {
+				t.Fatalf("expected input chan to be closed, it is not, got work with ID: %s", work.ID)
+			}
+		}
+
+		select {
+		case work, ok := <-herd.retry.hose:
+			if ok {
+				t.Fatalf("expected retry chan to be closed, it is not, got work with ID: %s", work.ID)
+			}
+		}
+
+		select {
+		case work, ok := <-herd.output.hose:
+			if ok {
+				t.Fatalf("expected output chan to be closed, it is not, got work with ID: %s", work.ID)
+			}
+		}
+		result <- struct{}{}
+	}()
+
+	select {
+	case <-result:
+	case <-time.After(2 * time.Second):
+		t.Fatalf("did not get chan closed confirmation in 2 seconds, looks like a deadlock")
+	}
 }
 
 func TestGopherdSuccess(t *testing.T) {
@@ -33,13 +66,13 @@ func TestGopherdSuccess(t *testing.T) {
 	gofherdSize := 1
 	gf := getBasicGopherd(maxRetries, workUnits, gofherdSize, Success)
 	gf.Start()
-	outputChan := gf.OutputChan()
 	for i := 0; i < workUnits; i++ {
-		w := <-outputChan
+		w := <-gf.output.hose
 		if w.Status() != Success || w.RetryCount() != 0 {
 			t.Fatalf("did not receive expected status in output, expected: %s, got: %s\n", Success, w.Status())
 		}
 	}
+	assertAllChannelsClosed(gf, t)
 }
 
 func TestGopherdRetries(t *testing.T) {
@@ -49,13 +82,13 @@ func TestGopherdRetries(t *testing.T) {
 	gf := getBasicGopherd(maxRetries, workUnits, gofherdSize, Retry)
 	gf.Start()
 
-	outputChan := gf.OutputChan()
 	for i := 0; i < workUnits; i++ {
-		w := <-outputChan
+		w := <-gf.output.hose
 		if w.Status() != Failure || w.RetryCount() != maxRetries {
 			t.Fatalf("did not receive expected status in output, expected: %s, got: %s\n", Failure, w.Status())
 		}
 	}
+	assertAllChannelsClosed(gf, t)
 }
 
 func TestGopherdFailure(t *testing.T) {
@@ -65,27 +98,17 @@ func TestGopherdFailure(t *testing.T) {
 	gf := getBasicGopherd(maxRetries, workUnits, gofherdSize, Failure)
 	gf.Start()
 
-	outputChan := gf.OutputChan()
 	for i := 0; i < workUnits; i++ {
-		w := <-outputChan
+		w := <-gf.output.hose
 		if w.Status() != Failure || w.RetryCount() != 0 {
 			t.Fatalf("did not receive expected status in output, expected: %s, got: %s\n", Failure, w.Status())
 		}
 	}
+	assertAllChannelsClosed(gf, t)
 }
 
 func TestGopherdNew(t *testing.T) {
 	gf := New(func(Work) Status { return Success })
-
-	inputChan := gf.InputChan()
-	if inputChan != gf.input {
-		t.Fatal("could not get input chan using InputChan()")
-	}
-
-	outputChan := gf.OutputChan()
-	if outputChan != gf.output {
-		t.Fatal("could not get output chan using OutputChan()")
-	}
 
 	gf.SetHerdSize(10)
 	if gf.herdSize != 10 {
@@ -98,7 +121,7 @@ func TestGopherdNew(t *testing.T) {
 	}
 }
 
-func TestPushToOutputChanWithSuccess(t *testing.T) {
+func TestMetricIncrementOnPushToOutputChanWithSuccess(t *testing.T) {
 	maxRetries := 0
 	workUnits := 1
 	gofherdSize := 1
@@ -108,16 +131,16 @@ func TestPushToOutputChanWithSuccess(t *testing.T) {
 	expectedNewVal := oldVal + 1.0
 	gf.Start()
 
-	outputChan := gf.OutputChan()
 	for i := 0; i < workUnits; i++ {
-		<-outputChan
+		<-gf.output.hose
 		if newVal := testutil.ToFloat64(successMetric); newVal != expectedNewVal {
 			t.Fatalf("did not receive expected val in success metric, expected: %f, got: %f\n", expectedNewVal, newVal)
 		}
 	}
+	assertAllChannelsClosed(gf, t)
 }
 
-func TestPushToOutputChanWithFailure(t *testing.T) {
+func TestMetricIncrementOnPushToOutputChanWithFailure(t *testing.T) {
 	maxRetries := 0
 	workUnits := 1
 	gofherdSize := 1
@@ -127,16 +150,16 @@ func TestPushToOutputChanWithFailure(t *testing.T) {
 	expectedNewVal := oldVal + 1.0
 	gf.Start()
 
-	outputChan := gf.OutputChan()
 	for i := 0; i < workUnits; i++ {
-		<-outputChan
+		<-gf.output.hose
 		if newVal := testutil.ToFloat64(failureMetric); newVal != expectedNewVal {
 			t.Fatalf("did not receive expected val in failure metric, expected: %f, got: %f\n", expectedNewVal, newVal)
 		}
 	}
+	assertAllChannelsClosed(gf, t)
 }
 
-func TestPushToRetryChan(t *testing.T) {
+func TestMetricIncrementOnPushToRetryChan(t *testing.T) {
 	maxRetries := 5
 	workUnits := 1
 	gofherdSize := 1
@@ -146,11 +169,11 @@ func TestPushToRetryChan(t *testing.T) {
 	expectedNewVal := oldVal + float64(maxRetries)
 	gf.Start()
 
-	outputChan := gf.OutputChan()
 	for i := 0; i < workUnits; i++ {
-		<-outputChan
+		<-gf.output.hose
 		if newVal := testutil.ToFloat64(retryMetric); newVal != expectedNewVal {
 			t.Fatalf("did not receive expected val in retry metric, expected: %f, got: %f\n", expectedNewVal, newVal)
 		}
 	}
+	assertAllChannelsClosed(gf, t)
 }
