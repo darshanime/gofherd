@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/rand"
 	"testing"
+
+	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
 func randomStatus() Status {
@@ -93,5 +95,62 @@ func TestGopherdNew(t *testing.T) {
 	gf.SetMaxRetries(10)
 	if gf.maxRetries != 10 {
 		t.Fatal("could not set maxRetries using SetMaxRetries()")
+	}
+}
+
+func TestPushToOutputChanWithSuccess(t *testing.T) {
+	maxRetries := 0
+	workUnits := 1
+	gofherdSize := 1
+	gf := getBasicGopherd(maxRetries, workUnits, gofherdSize, Success)
+
+	oldVal := testutil.ToFloat64(successMetric)
+	expectedNewVal := oldVal + 1.0
+	gf.Start()
+
+	outputChan := gf.OutputChan()
+	for i := 0; i < workUnits; i++ {
+		<-outputChan
+		if newVal := testutil.ToFloat64(successMetric); newVal != expectedNewVal {
+			t.Fatalf("did not receive expected val in success metric, expected: %f, got: %f\n", expectedNewVal, newVal)
+		}
+	}
+}
+
+func TestPushToOutputChanWithFailure(t *testing.T) {
+	maxRetries := 0
+	workUnits := 1
+	gofherdSize := 1
+	gf := getBasicGopherd(maxRetries, workUnits, gofherdSize, Failure)
+
+	oldVal := testutil.ToFloat64(failureMetric)
+	expectedNewVal := oldVal + 1.0
+	gf.Start()
+
+	outputChan := gf.OutputChan()
+	for i := 0; i < workUnits; i++ {
+		<-outputChan
+		if newVal := testutil.ToFloat64(failureMetric); newVal != expectedNewVal {
+			t.Fatalf("did not receive expected val in failure metric, expected: %f, got: %f\n", expectedNewVal, newVal)
+		}
+	}
+}
+
+func TestPushToRetryChan(t *testing.T) {
+	maxRetries := 5
+	workUnits := 1
+	gofherdSize := 1
+	gf := getBasicGopherd(maxRetries, workUnits, gofherdSize, Retry)
+
+	oldVal := testutil.ToFloat64(retryMetric)
+	expectedNewVal := oldVal + float64(maxRetries)
+	gf.Start()
+
+	outputChan := gf.OutputChan()
+	for i := 0; i < workUnits; i++ {
+		<-outputChan
+		if newVal := testutil.ToFloat64(retryMetric); newVal != expectedNewVal {
+			t.Fatalf("did not receive expected val in retry metric, expected: %f, got: %f\n", expectedNewVal, newVal)
+		}
 	}
 }

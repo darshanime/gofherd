@@ -44,6 +44,24 @@ func (gf *Gofherd) OutputChan() <-chan Work {
 	return gf.output
 }
 
+func (gf *Gofherd) PushToOutputChan(work Work) {
+	if work.Status() == Success {
+		IncrementSuccessMetric()
+	}
+	if work.Status() == Failure {
+		IncrementFailureMetric()
+	}
+	gf.output <- work
+	return
+}
+
+func (gf *Gofherd) PushToRetryChan(work Work) {
+	IncrementRetryMetric()
+	work.IncrementRetries()
+	go func() { gf.retry <- work }()
+	return
+}
+
 func (gf *Gofherd) initGopher() {
 	var work Work
 	var ok bool
@@ -72,13 +90,12 @@ func (gf *Gofherd) handleInput(work Work) {
 	status := gf.processingLogic(work)
 	work.setStatus(status)
 	if work.Status() == Success || work.Status() == Failure {
-		gf.output <- work
+		gf.PushToOutputChan(work)
 		return
 	}
 
 	if work.Status() == Retry && work.RetryCount() < gf.maxRetries {
-		work.IncrementRetries()
-		go func() { gf.retry <- work }()
+		gf.PushToRetryChan(work)
 		return
 	}
 	work.setStatus(Failure)
