@@ -10,12 +10,12 @@ type Gofherd struct {
 	input           queue
 	output          queue
 	retry           queue
-	processingLogic func(Work) Status
+	processingLogic func(*Work) Status
 	herdSize        int
 	maxRetries      int
 }
 
-func New(processingLogic func(Work) Status) *Gofherd {
+func New(processingLogic func(*Work) Status) *Gofherd {
 	return &Gofherd{
 		processingLogic: processingLogic,
 		input:           queue{hose: make(chan Work)},
@@ -119,7 +119,7 @@ handleRetries:
 }
 
 func (gf *Gofherd) handleInput(work Work) {
-	status := gf.processingLogic(work)
+	status := gf.processingLogic(&work)
 	work.setStatus(status)
 	if work.Status() == Success || work.Status() == Failure {
 		gf.PushToOutputChan(work)

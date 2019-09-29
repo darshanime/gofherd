@@ -14,7 +14,7 @@ func randomStatus() Status {
 }
 
 func getBasicGopherd(maxRetries, workUnits, gofherdSize int, status Status) *Gofherd {
-	gf := New(func(w Work) Status { return status })
+	gf := New(func(w *Work) Status { return status })
 	gf.SetHerdSize(gofherdSize)
 	gf.SetMaxRetries(maxRetries)
 
@@ -108,7 +108,7 @@ func TestGopherdFailure(t *testing.T) {
 }
 
 func TestGopherdNew(t *testing.T) {
-	gf := New(func(Work) Status { return Success })
+	gf := New(func(w *Work) Status { return Success })
 
 	gf.SetHerdSize(10)
 	if gf.herdSize != 10 {
@@ -176,4 +176,34 @@ func TestMetricIncrementOnPushToRetryChan(t *testing.T) {
 		}
 	}
 	assertAllChannelsClosed(gf, t)
+}
+
+func TestProcessingLogicMakesUpdatesToWork(t *testing.T) {
+	maxRetries := 5
+	workUnits := 1
+	gofherdSize := 1
+	gf := New(func(w *Work) Status {
+		w.Body = w.Body.(int) + 10
+		return Success
+	})
+	gf.SetHerdSize(gofherdSize)
+	gf.SetMaxRetries(maxRetries)
+
+	go func() {
+		for i := 0; i < workUnits; i++ {
+			gf.SendWork(Work{ID: fmt.Sprintf("%d", i), Body: 5})
+		}
+		gf.CloseInputChan()
+	}()
+
+	gf.Start()
+
+	for i := 0; i < workUnits; i++ {
+		w := <-gf.output.hose
+		if w.Body.(int) != 15 || w.RetryCount() != 0 {
+			t.Fatalf("did not receive expected body in output, expected: %d, got: %d\n", 15, w.Body.(int))
+		}
+	}
+	assertAllChannelsClosed(gf, t)
+
 }
