@@ -32,7 +32,7 @@ func LoadWork(herd *gf.Gofherd) {
 	herd.CloseInputChan()
 }
 
-func ProcessWork(w gf.Work) gf.Status {
+func ProcessWork(w *gf.Work) gf.Status {
 	workBody := w.Body.(int)
 	w.Body = workBody + 10
 	return gf.Success
@@ -52,6 +52,24 @@ func main() {
 	ReviewOutput(herd.OutputChan())
 }
 ```
+
+Output:
+
+```
+$ go run main.go
+workdID: success, result:10
+workdID: success, result:14
+workdID: success, result:12
+workdID: success, result:13
+workdID: success, result:17
+workdID: success, result:15
+workdID: success, result:16
+workdID: success, result:18
+workdID: success, result:19
+workdID: success, result:11
+```
+
+
 
 ### Specification
 
@@ -80,9 +98,4 @@ The `ID` field is used to track status of the work unit, retry count etc.
 The `Body` field can be anything that makes sense for the usecase at hand.
 
 On calling `gf.GetInputHose()`, a send only channel `chan<- Work` is returned. It can be populated with the `Work` entries by the user.
-On calling `gf.GetOutputHose()`, a receive only channel `chan-> Work` is returned. It can be used to read the statuss for successfully processed work units.
-
-## Gotchas
-- close the output chan when done
-- give pointers of gf.Work to functions
-- ?? stop giving uni directional chans to output
+On calling `gf.GetOutputHose()`, a receive only channel `chan-> Work` is returned. It can be used to read the status for successfully processed work units.
