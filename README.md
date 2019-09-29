@@ -1,17 +1,17 @@
 ## Gofherd
 
-Gofherd (`gof-herd`), is a small framework for running user defined tasks with bounded parallelism. It's simple interface gives you a channel to put tasks into, allows you to define a function which has "processing logic" and gives you an output chan to read statuss from.
+Gofherd (`gof-herd`), is a small framework for running user defined functions with bounded parallelism. It's simple interface gives you a channel to put tasks into, allows you to define a function which has "processing logic" and gives you an output channel to read results from.
 
 
 Gofherd provides:
 - Bounded parallelism
-  - You can configure number of gophers to run the tasks.
+  - You can configure the herd size (number of gophers) to run the tasks.
 - Monitoring
-  - Current state is exposed as Prometheus compatible metrics.
+  - Prometheus compatible metrics exposed for tracking progress.
 - Persistence
-  - State is saved so it can be continued after pause/crash.
+  - Progress is saved so execution can be continued after pause/crash.
 - HTTP APIs
-  - For monitoring, to dynamically change the parallelism etc.
+  - To dynamically change the parallelism etc.
 
 ### Example
 
@@ -24,34 +24,32 @@ import (
 	gf "github.com/darshanime/gofherd"
 )
 
+func LoadWork(herd *gf.Gofherd) {
+	for i := 0; i < 10; i++ {
+		w := gf.Work{ID: fmt.Sprintf("workdID:%d", i), Body: i}
+		herd.SendWork(w)
+	}
+	herd.CloseInputChan()
+}
+
+func ProcessWork(w gf.Work) gf.Status {
+	workBody := w.Body.(int)
+	w.Body = workBody + 10
+	return gf.Success
+}
+
+func ReviewOutput(outputChan <-chan gf.Work) {
+	for work := range outputChan {
+		fmt.Printf("workdID: %s, result:%d\n", work.Status(), work.Body)
+	}
+}
+
 func main() {
-	processinglogic := func(w gf.Work) gf.Status {
-		fmt.Printf("got work to process: %s\n", w.ID)
-		return gf.Success
-	}
-
-	herd := gf.New(processinglogic)
-	herd.SetGopherd(10)
-	inputChan := herd.InputChan()
-
-	loadFunc := func() {
-		for i := 0; i < 1000; i++ {
-			w := gf.Work{ID: fmt.Sprintf("%d", i)}
-			fmt.Printf("got work to input: %s\n", w.ID)
-			inputChan <- w
-		}
-		close(inputChan)
-	}
-
-	go loadFunc()
-
+	herd := gf.New(ProcessWork)
+	herd.SetHerdSize(10)
+	go LoadWork(herd)
 	herd.Start()
-
-	outputChan := herd.OutputChan()
-	for i := 0; i < 1000; i++ {
-		w := <-outputChan
-		fmt.Printf("got work output status: %s\n", w.Status())
-	}
+	ReviewOutput(herd.OutputChan())
 }
 ```
 
@@ -84,6 +82,7 @@ The `Body` field can be anything that makes sense for the usecase at hand.
 On calling `gf.GetInputHose()`, a send only channel `chan<- Work` is returned. It can be populated with the `Work` entries by the user.
 On calling `gf.GetOutputHose()`, a receive only channel `chan-> Work` is returned. It can be used to read the statuss for successfully processed work units.
 
-### Gotchas
-- Do not close the input channel after you are done loading the input, it's being used as the retry queue as well (this may change in the future)
-- Do not use a gofherd of size 1, since that gopher may have to put the work unit on the retry queue and it will deadlock on it.
+## Gotchas
+- close the output chan when done
+- give pointers of gf.Work to functions
+- ?? stop giving uni directional chans to output
