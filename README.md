@@ -1,17 +1,7 @@
 ## Gofherd
 
-Gofherd (`gof-herd`), is a small framework for running user defined functions with bounded parallelism. It's simple interface gives you a channel to put tasks into, allows you to define a function which has "processing logic" and gives you an output channel to read results from.
-
-
-Gofherd provides:
-- Bounded parallelism
-  - You can configure the herd size (number of gophers) to run the tasks.
-- Monitoring
-  - Prometheus compatible metrics exposed for tracking progress.
-- Persistence
-  - Progress is saved so execution can be continued after pause/crash.
-- HTTP APIs
-  - To dynamically change the parallelism etc.
+Gofherd (`gof-herd`), is a small framework for running user defined functions with bounded parallelism. 
+It's simple interface gives you a function which accepts tasks, allows you to define a function which has "processing logic" and gives you an output channel to read results from.
 
 ### Example
 
@@ -20,6 +10,8 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
 
 	gf "github.com/darshanime/gofherd"
 )
@@ -33,20 +25,22 @@ func LoadWork(herd *gf.Gofherd) {
 }
 
 func ProcessWork(w *gf.Work) gf.Status {
-	workBody := w.Body.(int)
-	w.Body = workBody + 10
+	result := w.Body.(int) + 10
+	w.SetResult(result)
 	return gf.Success
 }
 
 func ReviewOutput(outputChan <-chan gf.Work) {
 	for work := range outputChan {
-		fmt.Printf("workdID: %s, result:%d\n", work.Status(), work.Body)
+		fmt.Printf("workdID: %s, result:%d\n", work.Status(), work.Result())
 	}
 }
 
 func main() {
 	herd := gf.New(ProcessWork)
-	herd.SetHerdSize(10)
+	herd.SetHerdSize(1)
+	logger := log.New(os.Stdout, "gofherd:", log.Ldate|log.Ltime|log.Lshortfile)
+	herd.SetLogger(logger)
 	go LoadWork(herd)
 	herd.Start()
 	ReviewOutput(herd.OutputChan())
@@ -74,14 +68,17 @@ workdID: success, result:11
 
 When initializing `gofherd`, it takes:
 
-- processing logic function with the signature `func (in Work) gf.Status`
+- processing logic function with the signature `func ProcessWork(w *gf.Work) gf.Status`
 The status can be one of:
 ```go
-type Status struct {
-    Success int
-    Failure int
-    Retry   int
-}
+const (
+	// Success represents a successful processing outcome. It won't be retried.
+	Success Status = iota
+	// Retry represents a failed processing outcome, but is retriable. It will be retried for MaxRetries.
+	Retry
+	// Failure represents a failed processing outcome and should not be retried again.
+	Failure
+)
 ```
 
 Each unit of "work" is defined as the struct:
