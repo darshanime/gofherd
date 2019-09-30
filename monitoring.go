@@ -20,14 +20,14 @@ var (
 	})
 )
 
-func IncrementSuccessMetric() {
+func incrementSuccessMetric() {
 	successMetric.Inc()
 }
 
-func IncrementRetryMetric() {
+func incrementRetryMetric() {
 	retryMetric.Inc()
 }
 
-func IncrementFailureMetric() {
+func incrementFailureMetric() {
 	failureMetric.Inc()
 }

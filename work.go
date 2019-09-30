@@ -31,11 +31,11 @@ type Work struct {
 	status Status
 }
 
-func (w *Work) RetryCount() int {
+func (w *Work) retryCount() int {
 	return w.retry
 }
 
-func (w *Work) IncrementRetries() {
+func (w *Work) incrementRetries() {
 	w.retry = w.retry + 1
 }
 

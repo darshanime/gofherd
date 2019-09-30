@@ -4,13 +4,13 @@ import "testing"
 
 func TestQueueMethods(t *testing.T) {
 	s := queue{hose: make(chan Work)}
-	s.Increment()
-	if s.Count() != 1 {
-		t.Fatalf("state Count did not work as expected. expected:%d, got:%d", 1, s.Count())
+	s.increment()
+	if s.count() != 1 {
+		t.Fatalf("state count did not work as expected. expected:%d, got:%d", 1, s.count())
 	}
 
-	s.SetClosedTrue()
-	if s.Closed() != true {
-		t.Fatalf("state SetClosedTrue did not work as expected. expected:%t, got:%t", true, s.Closed())
+	s.setClosedTrue()
+	if s.closed() != true {
+		t.Fatalf("state setClosedTrue did not work as expected. expected:%t, got:%t", true, s.closed())
 	}
 }

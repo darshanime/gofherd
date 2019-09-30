@@ -98,3 +98,20 @@ The `Body` field can be anything that makes sense for the usecase at hand.
 
 On calling `gf.GetInputHose()`, a send only channel `chan<- Work` is returned. It can be populated with the `Work` entries by the user.
 On calling `gf.GetOutputHose()`, a receive only channel `chan-> Work` is returned. It can be used to read the status for successfully processed work units.
+
+#### Logging
+
+Gofherd accepts 
+
+```go
+type Logger interface {
+	Printf(format string, v ...interface{})
+}
+```
+
+Example Usage:
+
+```go
+logger := log.New(os.Stdout, "gofherd:", log.Ldate|log.Ltime|log.Lshortfile)
+herd.SetLogger(logger)
+```

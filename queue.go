@@ -6,32 +6,32 @@ import (
 )
 
 type queue struct {
-	hose   chan Work
-	lock   sync.Mutex
-	count  uint64
-	closed bool
+	hose  chan Work
+	mu    sync.Mutex
+	num   uint64
+	close bool
 }
 
-func (q *queue) Increment() {
-	atomic.AddUint64(&(q.count), 1)
+func (q *queue) increment() {
+	atomic.AddUint64(&(q.num), 1)
 }
 
-func (q *queue) SetClosedTrue() {
-	q.closed = true
+func (q *queue) setClosedTrue() {
+	q.close = true
 }
 
-func (q *queue) Closed() bool {
-	return q.closed
+func (q *queue) closed() bool {
+	return q.close
 }
 
-func (q *queue) Count() uint64 {
-	return q.count
+func (q *queue) count() uint64 {
+	return q.num
 }
 
-func (q *queue) Lock() {
-	q.lock.Lock()
+func (q *queue) lock() {
+	q.mu.Lock()
 }
 
-func (q *queue) Unlock() {
-	q.lock.Unlock()
+func (q *queue) unlock() {
+	q.mu.Unlock()
 }

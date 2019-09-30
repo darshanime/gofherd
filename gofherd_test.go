@@ -68,7 +68,7 @@ func TestGopherdSuccess(t *testing.T) {
 	gf.Start()
 	for i := 0; i < workUnits; i++ {
 		w := <-gf.output.hose
-		if w.Status() != Success || w.RetryCount() != 0 {
+		if w.Status() != Success || w.retryCount() != 0 {
 			t.Fatalf("did not receive expected status in output, expected: %s, got: %s\n", Success, w.Status())
 		}
 	}
@@ -84,7 +84,7 @@ func TestGopherdRetries(t *testing.T) {
 
 	for i := 0; i < workUnits; i++ {
 		w := <-gf.output.hose
-		if w.Status() != Failure || w.RetryCount() != maxRetries {
+		if w.Status() != Failure || w.retryCount() != maxRetries {
 			t.Fatalf("did not receive expected status in output, expected: %s, got: %s\n", Failure, w.Status())
 		}
 	}
@@ -100,7 +100,7 @@ func TestGopherdFailure(t *testing.T) {
 
 	for i := 0; i < workUnits; i++ {
 		w := <-gf.output.hose
-		if w.Status() != Failure || w.RetryCount() != 0 {
+		if w.Status() != Failure || w.retryCount() != 0 {
 			t.Fatalf("did not receive expected status in output, expected: %s, got: %s\n", Failure, w.Status())
 		}
 	}
@@ -205,7 +205,7 @@ func TestProcessingLogicMakesUpdatesToWork(t *testing.T) {
 
 	for i := 0; i < workUnits; i++ {
 		w := <-gf.output.hose
-		if w.Body.(int) != 15 || w.RetryCount() != 0 {
+		if w.Body.(int) != 15 || w.retryCount() != 0 {
 			t.Fatalf("did not receive expected body in output, expected: %d, got: %d\n", 15, w.Body.(int))
 		}
 	}
