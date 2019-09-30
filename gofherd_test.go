@@ -119,6 +119,11 @@ func TestGopherdNew(t *testing.T) {
 	if gf.maxRetries != 10 {
 		t.Fatal("could not set maxRetries using SetMaxRetries()")
 	}
+
+	gf.SetAddr("0.0.0.0:2345")
+	if gf.addr != "0.0.0.0:2345" {
+		t.Fatal("could not set addr using SetAddr()")
+	}
 }
 
 func TestMetricIncrementOnPushToOutputChanWithSuccess(t *testing.T) {

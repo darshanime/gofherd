@@ -13,6 +13,7 @@ type Gofherd struct {
 	processingLogic func(*Work) Status
 	herdSize        int
 	maxRetries      int
+	addr            string
 }
 
 func New(processingLogic func(*Work) Status) *Gofherd {
@@ -21,6 +22,7 @@ func New(processingLogic func(*Work) Status) *Gofherd {
 		input:           queue{hose: make(chan Work)},
 		output:          queue{hose: make(chan Work)},
 		retry:           queue{hose: make(chan Work)},
+		addr:            "127.0.0.1:2112",
 	}
 }
 
@@ -54,6 +56,10 @@ func (gf *Gofherd) CloseOutputChan() {
 
 func (gf *Gofherd) SetHerdSize(num int) {
 	gf.herdSize = num
+}
+
+func (gf *Gofherd) SetAddr(addr string) {
+	gf.addr = addr
 }
 
 func (gf *Gofherd) SetMaxRetries(num int) {
@@ -135,7 +141,7 @@ func (gf *Gofherd) handleInput(work Work) {
 }
 
 func (gf *Gofherd) Start() {
-	go http.ListenAndServe(":2112", promhttp.Handler())
+	go http.ListenAndServe(gf.addr, promhttp.Handler())
 
 	for i := 0; i < gf.herdSize; i++ {
 		go gf.initGopher()
