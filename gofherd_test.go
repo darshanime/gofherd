@@ -15,8 +15,8 @@ func randomStatus() Status {
 
 func getBasicGopherd(maxRetries, workUnits, gofherdSize int, status Status) *Gofherd {
 	gf := New(func(w *Work) Status { return status })
-	gf.SetHerdSize(gofherdSize)
-	gf.SetMaxRetries(maxRetries)
+	gf.SetHerdSize(int64(gofherdSize))
+	gf.SetMaxRetries(int64(maxRetries))
 
 	go func() {
 		for i := 0; i < workUnits; i++ {
@@ -84,7 +84,7 @@ func TestGopherdRetries(t *testing.T) {
 
 	for i := 0; i < workUnits; i++ {
 		w := <-gf.output.hose
-		if w.Status() != Failure || w.retryCount() != maxRetries {
+		if w.Status() != Failure || w.retryCount() != int64(maxRetries) {
 			t.Fatalf("did not receive expected status in output, expected: %s, got: %s\n", Failure, w.Status())
 		}
 	}
@@ -191,8 +191,8 @@ func TestProcessingLogicMakesUpdatesToWork(t *testing.T) {
 		w.Body = w.Body.(int) + 10
 		return Success
 	})
-	gf.SetHerdSize(gofherdSize)
-	gf.SetMaxRetries(maxRetries)
+	gf.SetHerdSize(int64(gofherdSize))
+	gf.SetMaxRetries(int64(maxRetries))
 
 	go func() {
 		for i := 0; i < workUnits; i++ {

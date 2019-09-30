@@ -13,8 +13,8 @@ type Gofherd struct {
 	output          queue
 	retry           queue
 	processingLogic func(*Work) Status
-	herdSize        int
-	maxRetries      int
+	herdSize        int64
+	maxRetries      int64
 	addr            string
 	logger          Logger
 }
@@ -75,7 +75,7 @@ func (gf *Gofherd) closeOutputChan() {
 
 // SetHerdSize sets the herd size. The passed number is the number of
 // gofhers spawned up for processing.
-func (gf *Gofherd) SetHerdSize(num int) {
+func (gf *Gofherd) SetHerdSize(num int64) {
 	gf.herdSize = num
 }
 
@@ -85,7 +85,7 @@ func (gf *Gofherd) SetAddr(addr string) {
 }
 
 // SetMaxRetries is the maximum number of times a Work unit will be tried before giving up.
-func (gf *Gofherd) SetMaxRetries(num int) {
+func (gf *Gofherd) SetMaxRetries(num int64) {
 	gf.maxRetries = num
 }
 
@@ -175,7 +175,7 @@ func (gf *Gofherd) handleInput(work Work) {
 func (gf *Gofherd) Start() {
 	gf.logger.Printf("Starting server at %s\n", gf.addr)
 	go http.ListenAndServe(gf.addr, promhttp.Handler())
-	for i := 0; i < gf.herdSize; i++ {
+	for i := int64(0); i < gf.herdSize; i++ {
 		gf.logger.Printf("Starting gofher #%d\n", i)
 		go gf.initGopher()
 	}

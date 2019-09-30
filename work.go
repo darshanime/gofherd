@@ -1,5 +1,7 @@
 package gofherd
 
+import "sync/atomic"
+
 // Status represents the outcome of "processing" Work.
 // It can be one of Success, Retry, Failure.
 type Status int
@@ -31,18 +33,18 @@ func (r Status) String() string {
 // interface to store the "problem" and "solution" respectively.
 type Work struct {
 	ID     string
-	retry  int
+	retry  int64
 	status Status
 	Body   interface{}
 	result interface{}
 }
 
-func (w *Work) retryCount() int {
+func (w *Work) retryCount() int64 {
 	return w.retry
 }
 
 func (w *Work) incrementRetries() {
-	w.retry = w.retry + 1
+	atomic.AddInt64(&(w.retry), 1)
 }
 
 // SetResult is used to set the result for the Work unit.
