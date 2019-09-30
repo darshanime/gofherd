@@ -14,6 +14,7 @@ type Gofherd struct {
 	herdSize        int
 	maxRetries      int
 	addr            string
+	logger          Logger
 }
 
 func New(processingLogic func(*Work) Status) *Gofherd {
@@ -23,12 +24,18 @@ func New(processingLogic func(*Work) Status) *Gofherd {
 		output:          queue{hose: make(chan Work)},
 		retry:           queue{hose: make(chan Work)},
 		addr:            "127.0.0.1:2112",
+		logger:          NoOpLogger{},
 	}
 }
 
-func (gf *Gofherd) SendWork(w Work) {
+func (gf *Gofherd) SetLogger(l Logger) {
+	gf.logger = l
+}
+
+func (gf *Gofherd) SendWork(work Work) {
 	gf.input.Increment()
-	gf.input.hose <- w
+	gf.input.hose <- work
+	gf.logger.Printf("Pushed to input, work: %s\n", work.ID)
 }
 
 func (gf *Gofherd) OutputChan() <-chan Work {
@@ -40,6 +47,7 @@ func (gf *Gofherd) CloseInputChan() {
 	defer gf.input.Unlock()
 	if !gf.input.Closed() {
 		close(gf.input.hose)
+		gf.logger.Printf("Closed input chan\n")
 		gf.input.SetClosedTrue()
 		gf.MaintainRetry()
 	}
@@ -50,6 +58,7 @@ func (gf *Gofherd) CloseOutputChan() {
 	defer gf.output.Unlock()
 	if !gf.output.Closed() {
 		close(gf.output.hose)
+		gf.logger.Printf("Closed output chan\n")
 		gf.output.SetClosedTrue()
 	}
 }
@@ -73,6 +82,7 @@ func (gf *Gofherd) PushToOutputChan(work Work) {
 	if work.Status() == Failure {
 		IncrementFailureMetric()
 	}
+	gf.logger.Printf("Pusing to output, work: %s\n", work.ID)
 	gf.output.hose <- work
 	gf.output.Increment()
 	gf.MaintainRetry()
@@ -89,13 +99,17 @@ func (gf *Gofherd) MaintainRetry() {
 
 func (gf *Gofherd) closeRetryChan() {
 	close(gf.retry.hose)
+	gf.logger.Printf("Closed retry chan\n")
 	gf.retry.SetClosedTrue()
 }
 
 func (gf *Gofherd) PushToRetryChan(work Work) {
 	IncrementRetryMetric()
 	work.IncrementRetries()
-	go func() { gf.retry.hose <- work }()
+	go func() {
+		gf.retry.hose <- work
+		gf.logger.Printf("Pushed to retry, work: %s\n", work.ID)
+	}()
 	return
 }
 
@@ -108,17 +122,20 @@ func (gf *Gofherd) initGopher() {
 			if !ok {
 				goto handleRetries
 			}
+			gf.logger.Printf("Received work from input: %s\n", work.ID)
 			gf.handleInput(work)
 		case work, ok = <-gf.retry.hose:
 			if !ok {
 				gf.CloseOutputChan()
 				return
 			}
+			gf.logger.Printf("Received work from retry: %s\n", work.ID)
 			gf.handleInput(work)
 		}
 	}
 handleRetries:
 	for work := range gf.retry.hose {
+		gf.logger.Printf("Received work from retry: %s\n", work.ID)
 		gf.handleInput(work)
 	}
 	gf.CloseOutputChan()
@@ -141,9 +158,10 @@ func (gf *Gofherd) handleInput(work Work) {
 }
 
 func (gf *Gofherd) Start() {
+	gf.logger.Printf("Starting server at %s\n", gf.addr)
 	go http.ListenAndServe(gf.addr, promhttp.Handler())
-
 	for i := 0; i < gf.herdSize; i++ {
+		gf.logger.Printf("Starting gofher #%d\n", i)
 		go gf.initGopher()
 	}
 }

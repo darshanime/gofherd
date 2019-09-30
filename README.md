@@ -70,7 +70,6 @@ workdID: success, result:11
 ```
 
 
-
 ### Specification
 
 When initializing `gofherd`, it takes:
