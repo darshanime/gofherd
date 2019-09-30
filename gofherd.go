@@ -6,6 +6,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+// Gofherd is the core struct, orchestrating all functionality.
+// It offers all the public methods of Gofherd.
 type Gofherd struct {
 	input           queue
 	output          queue
@@ -17,6 +19,8 @@ type Gofherd struct {
 	logger          Logger
 }
 
+// New initializes a new Gofherd struct. It takes in the processing logic function
+// with the signature `func(*gf.Work) gf.Status`
 func New(processingLogic func(*Work) Status) *Gofherd {
 	return &Gofherd{
 		processingLogic: processingLogic,
@@ -28,20 +32,26 @@ func New(processingLogic func(*Work) Status) *Gofherd {
 	}
 }
 
+// SetLogger is used to setup logging. If not specified, gofherd emits no logs.
 func (gf *Gofherd) SetLogger(l Logger) {
 	gf.logger = l
 }
 
+// SendWork enques Work onto the input chan.
 func (gf *Gofherd) SendWork(work Work) {
 	gf.input.increment()
 	gf.input.hose <- work
 	gf.logger.Printf("Pushed to input, work: %s\n", work.ID)
 }
 
+// OutputChan returns the output chan, it will be closed when the processing is complete,
+// enabling it to be read in a `for range` loop.
 func (gf *Gofherd) OutputChan() <-chan Work {
 	return gf.output.hose
 }
 
+// CloseInputChan is to closed the input chan. Closing the input chan when the tasks are completed
+// will allow gofherd to shutdown gracefully.
 func (gf *Gofherd) CloseInputChan() {
 	gf.input.lock()
 	defer gf.input.unlock()
@@ -63,14 +73,18 @@ func (gf *Gofherd) closeOutputChan() {
 	}
 }
 
+// SetHerdSize sets the herd size. The passed number is the number of
+// gofhers spawned up for processing.
 func (gf *Gofherd) SetHerdSize(num int) {
 	gf.herdSize = num
 }
 
+// SetAddr accepts the `addr` string where the started server will be spun up.
 func (gf *Gofherd) SetAddr(addr string) {
 	gf.addr = addr
 }
 
+// SetMaxRetries is the maximum number of times a Work unit will be tried before giving up.
 func (gf *Gofherd) SetMaxRetries(num int) {
 	gf.maxRetries = num
 }
@@ -157,6 +171,7 @@ func (gf *Gofherd) handleInput(work Work) {
 	gf.pushToOutputChan(work)
 }
 
+// Start will start the processing and start the server. The function will return immediately.
 func (gf *Gofherd) Start() {
 	gf.logger.Printf("Starting server at %s\n", gf.addr)
 	go http.ListenAndServe(gf.addr, promhttp.Handler())
