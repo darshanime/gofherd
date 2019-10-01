@@ -24,9 +24,9 @@ type Gofherd struct {
 func New(processingLogic func(*Work) Status) *Gofherd {
 	return &Gofherd{
 		processingLogic: processingLogic,
-		input:           queue{hose: make(chan Work)},
-		output:          queue{hose: make(chan Work)},
-		retry:           queue{hose: make(chan Work)},
+		input:           newQueue(),
+		output:          newQueue(),
+		retry:           newQueue(),
 		addr:            "127.0.0.1:2112",
 		logger:          noOpLogger{},
 	}
