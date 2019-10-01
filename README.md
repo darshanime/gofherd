@@ -85,16 +85,19 @@ Each unit of "work" is defined as the struct:
 
 ```go
 type Work struct {
-    ID   string
-    Body interface{}
+	ID     string
+	retry  int64
+	status Status
+	Body   interface{}
+	result interface{}
 }
 ```
 
 The `ID` field is used to track status of the work unit, retry count etc.
-The `Body` field can be anything that makes sense for the usecase at hand.
+The `Body` field can be anything that makes sense for the usecase at hand. It is for the input problem, there is a `Result` field which has the output answer.
 
-On calling `gf.GetInputHose()`, a send only channel `chan<- Work` is returned. It can be populated with the `Work` entries by the user.
-On calling `gf.GetOutputHose()`, a receive only channel `chan-> Work` is returned. It can be used to read the status for successfully processed work units.
+For sending work, `gf.SendWork` can be used. It is a blocking call and will return when a member of the herd is accepts the work.
+On calling `gf.OutputChan()`, a receive only channel `<-chan Work` is returned which can be used to read the status for successfully processed work units. It will be closed by gofherd on completion.
 
 #### Logging
 
@@ -111,4 +114,12 @@ Example Usage:
 ```go
 logger := log.New(os.Stdout, "gofherd:", log.Ldate|log.Ltime|log.Lshortfile)
 herd.SetLogger(logger)
+```
+
+#### Contributing
+
+Run the tests
+
+```bash
+go test -race -v ./...
 ```
