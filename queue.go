@@ -45,7 +45,7 @@ func (q *queue) closed() bool {
 }
 
 func (q *queue) count() uint64 {
-	return q.num
+	return atomic.LoadUint64(&(q.num))
 }
 
 func (q *queue) lock() {
