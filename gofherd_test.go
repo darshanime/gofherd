@@ -2,15 +2,15 @@ package gofherd
 
 import (
 	"fmt"
-	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
-func randomStatus() Status {
-	return Status(rand.Intn(len(statusStrings)))
+func drainOutput(output <-chan Work) {
+	for range output {
+	}
 }
 
 func getBasicGopherd(maxRetries, workUnits, gofherdSize int, status Status) *Gofherd {
@@ -210,5 +210,32 @@ func TestProcessingLogicMakesUpdatesToWork(t *testing.T) {
 		}
 	}
 	assertAllChannelsClosed(gf, t)
+}
 
+func TestGopherdUpdateHerdSize(t *testing.T) {
+	maxRetries := 0
+	workUnits := 1
+	gofherdSize := 1
+	gf := getBasicGopherd(maxRetries, workUnits, gofherdSize, Success)
+	gf.Start()
+	status, msg := gf.updateHerdSize(-1)
+	expectedMsg := "Herd size cannot be negative"
+	if status != Retry || msg != expectedMsg || gf.herdSize != 1 {
+		t.Fatalf("did not get the expected response on trying to set negative herd size. \nexpected: msg: %s, status: %s, size: %d\ngot: msg: %s, status: %s, size: %d", expectedMsg, Success, 1, msg, status, gf.herdSize)
+	}
+
+	status, msg = gf.updateHerdSize(10)
+	expectedMsg = "success"
+	if status != Success || msg != expectedMsg || gf.herdSize != 10 {
+		t.Fatalf("did not get the expected response on trying to set positive herd size. \nexpected: msg: %s, status: %s, size: %d\ngot: msg: %s, status: %s, size: %d", expectedMsg, Success, 10, msg, status, gf.herdSize)
+	}
+
+	status, msg = gf.updateHerdSize(10)
+	expectedMsg = "Herd size already 10"
+	if status != Success || msg != expectedMsg || gf.herdSize != 10 {
+		t.Fatalf("did not get the expected response on trying to set already set herd size. \nexpected: msg: %s, status: %s, size: %d\ngot: msg: %s, status: %s, size: %d", expectedMsg, Success, 10, msg, status, gf.herdSize)
+	}
+
+	drainOutput(gf.OutputChan())
+	assertAllChannelsClosed(gf, t)
 }

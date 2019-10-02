@@ -1,6 +1,7 @@
 package gofherd
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -12,6 +13,7 @@ type Gofherd struct {
 	input           queue
 	output          queue
 	retry           queue
+	quit            chan struct{}
 	processingLogic func(*Work) Status
 	herdSize        int64
 	maxRetries      int64
@@ -29,6 +31,7 @@ func New(processingLogic func(*Work) Status) *Gofherd {
 		retry:           newQueue(),
 		addr:            "127.0.0.1:2112",
 		logger:          noOpLogger{},
+		quit:            make(chan struct{}),
 	}
 }
 
@@ -132,6 +135,9 @@ func (gf *Gofherd) initGopher() {
 	var ok bool
 	for {
 		select {
+		case <-gf.quit:
+			gf.logger.Printf("Received quit, closing chan\n")
+			return
 		case work, ok = <-gf.input.hose:
 			if !ok {
 				goto handleRetries
@@ -171,12 +177,50 @@ func (gf *Gofherd) handleInput(work Work) {
 	gf.pushToOutputChan(work)
 }
 
-// Start will start the processing and start the server. The function will return immediately.
-func (gf *Gofherd) Start() {
-	gf.logger.Printf("Starting server at %s\n", gf.addr)
-	go http.ListenAndServe(gf.addr, promhttp.Handler())
-	for i := int64(0); i < gf.herdSize; i++ {
+func (gf *Gofherd) updateHerdSize(num int64) (Status, string) {
+	if num < 0 {
+		msg := fmt.Sprintf("Herd size cannot be negative")
+		gf.logger.Printf(msg + "\n")
+		return Retry, msg
+	}
+	oldSize := gf.herdSize
+	if oldSize == num {
+		msg := fmt.Sprintf("Herd size already %d", num)
+		gf.logger.Printf(msg + "\n")
+		return Success, msg
+	}
+
+	if num > oldSize {
+		gf.increasedHerdBy(num - oldSize)
+	}
+
+	if num < oldSize {
+		gf.decreaseHerdBy(oldSize - num)
+	}
+
+	gf.SetHerdSize(num)
+	return Success, "success"
+}
+
+func (gf *Gofherd) increasedHerdBy(num int64) {
+	for i := int64(0); i < num; i++ {
 		gf.logger.Printf("Starting gofher #%d\n", i)
 		go gf.initGopher()
 	}
+}
+
+func (gf *Gofherd) decreaseHerdBy(num int64) {
+	for i := int64(0); i < num; i++ {
+		gf.quit <- struct{}{}
+	}
+}
+
+// Start will start the processing and start the server. The function will return immediately.
+func (gf *Gofherd) Start() {
+	gf.logger.Printf("Starting server at %s\n", gf.addr)
+	mux := http.NewServeMux()
+	mux.Handle("/herd", http.HandlerFunc(gf.herdHandler))
+	mux.Handle("/metrics", promhttp.Handler())
+	go http.ListenAndServe(gf.addr, mux)
+	gf.increasedHerdBy(gf.herdSize)
 }
