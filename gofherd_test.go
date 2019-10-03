@@ -236,6 +236,12 @@ func TestGopherdUpdateHerdSize(t *testing.T) {
 		t.Fatalf("did not get the expected response on trying to set already set herd size. \nexpected: msg: %s, status: %s, size: %d\ngot: msg: %s, status: %s, size: %d", expectedMsg, Success, 10, msg, status, gf.herdSize)
 	}
 
+	status, msg = gf.updateHerdSize(1)
+	expectedMsg = "success"
+	if status != Success || msg != expectedMsg || gf.herdSize != 1 {
+		t.Fatalf("did not get the expected response on trying to set positive herd size. \nexpected: msg: %s, status: %s, size: %d\ngot: msg: %s, status: %s, size: %d", expectedMsg, Success, 1, msg, status, gf.herdSize)
+	}
+
 	drainOutput(gf.OutputChan())
 	assertAllChannelsClosed(gf, t)
 }

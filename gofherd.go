@@ -130,6 +130,15 @@ func (gf *Gofherd) pushToRetryChan(work Work) {
 	return
 }
 
+func (gf *Gofherd) receivedRetry(work Work, ok bool) {
+	if !ok {
+		gf.closeOutputChan()
+		return
+	}
+	gf.logger.Printf("Received work from retry: %s\n", work.ID)
+	gf.handleInput(work)
+}
+
 func (gf *Gofherd) initGopher() {
 	var work Work
 	var ok bool
@@ -145,20 +154,21 @@ func (gf *Gofherd) initGopher() {
 			gf.logger.Printf("Received work from input: %s\n", work.ID)
 			gf.handleInput(work)
 		case work, ok = <-gf.retry.hose:
-			if !ok {
-				gf.closeOutputChan()
-				return
-			}
-			gf.logger.Printf("Received work from retry: %s\n", work.ID)
-			gf.handleInput(work)
+			gf.receivedRetry(work, ok)
 		}
 	}
 handleRetries:
-	for work := range gf.retry.hose {
-		gf.logger.Printf("Received work from retry: %s\n", work.ID)
-		gf.handleInput(work)
+	for {
+		select {
+		case <-gf.quit:
+			gf.logger.Printf("Received quit, closing chan\n")
+			return
+		case work, ok = <-gf.retry.hose:
+			gf.receivedRetry(work, ok)
+		}
 	}
 	gf.closeOutputChan()
+
 }
 
 func (gf *Gofherd) handleInput(work Work) {
