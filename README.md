@@ -8,7 +8,7 @@ Gofherd provides:
   - You can configure number of gophers to run the tasks.
 - Monitoring
   - Current state is exposed as Prometheus compatible metrics on `/metrics`
-- Dynamic change the parallelism
+- Dynamic parallelism
   - Using `GET`/`PATCH` calls on `/herd`
 
 ### Example
@@ -43,7 +43,7 @@ func ProcessWork(w *gf.Work) gf.Status {
 func ReviewOutput(outputChan <-chan gf.Work) {
 	// output chan is closed when all results are received
 	for work := range outputChan {
-		fmt.Printf("workdID: %s, result:%d\n", work.Status(), work.Result())
+		fmt.Printf("%s, status: %s, result:%d\n", work.ID, work.Status(), work.Result())
 	}
 }
 
@@ -69,16 +69,16 @@ Output:
 
 ```
 $ go run main.go
-workdID: success, result:10
-workdID: success, result:14
-workdID: success, result:12
-workdID: success, result:13
-workdID: success, result:17
-workdID: success, result:15
-workdID: success, result:16
-workdID: success, result:18
-workdID: success, result:19
-workdID: success, result:11
+workdID:0, status: success, result:10
+workdID:1, status: success, result:11
+workdID:2, status: success, result:12
+workdID:3, status: success, result:13
+workdID:5, status: success, result:15
+workdID:4, status: success, result:14
+workdID:7, status: success, result:17
+workdID:6, status: success, result:16
+workdID:9, status: success, result:19
+workdID:8, status: success, result:18
 ```
 
 
