@@ -3,6 +3,14 @@
 Gofherd (`gof-herd`), is a small framework for running user defined functions with bounded parallelism. 
 It's simple interface gives you a function which accepts tasks, allows you to define a function which has "processing logic" and gives you an output channel to read results from.
 
+Gofherd provides:
+- Bounded parallelism
+  - You can configure number of gophers to run the tasks.
+- Monitoring
+  - Current state is exposed as Prometheus compatible metrics on `/metrics`
+- Dynamic change the parallelism
+  - Using `GET`/`PATCH` calls on `/herd`
+
 ### Example
 
 ```go
@@ -10,8 +18,6 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"os"
 
 	gf "github.com/darshanime/gofherd"
 )
@@ -19,33 +25,45 @@ import (
 func LoadWork(herd *gf.Gofherd) {
 	for i := 0; i < 10; i++ {
 		w := gf.Work{ID: fmt.Sprintf("workdID:%d", i), Body: i}
+		// blocking call, returns when work picked up by a goroutine
 		herd.SendWork(w)
 	}
+	// done pushing all work, close input chan to indicate that
 	herd.CloseInputChan()
 }
 
+// this is the signature of "processing logic" function
 func ProcessWork(w *gf.Work) gf.Status {
 	result := w.Body.(int) + 10
+	// set the result after processing
 	w.SetResult(result)
 	return gf.Success
 }
 
 func ReviewOutput(outputChan <-chan gf.Work) {
+	// output chan is closed when all results are received
 	for work := range outputChan {
 		fmt.Printf("workdID: %s, result:%d\n", work.Status(), work.Result())
 	}
 }
 
 func main() {
+	// passing "processing logic" when initializing work
 	herd := gf.New(ProcessWork)
-	herd.SetHerdSize(1)
-	logger := log.New(os.Stdout, "gofherd:", log.Ldate|log.Ltime|log.Lshortfile)
-	herd.SetLogger(logger)
+	// setting a herd size of 0
+	herd.SetHerdSize(0)
+	// disabling retries
+	herd.SetMaxRetries(0)
+	// bind on 127.0.0.1:5555
+	herd.SetAddr("127.0.0.1:5555")
 	go LoadWork(herd)
 	herd.Start()
 	ReviewOutput(herd.OutputChan())
 }
 ```
+
+Get current herd size: `curl -XGET localhost:5555/herd`
+Now, we can increase the herd size using `curl -XPATCH 127.0.0.1:5555/herd -d '{"num": 10}'`
 
 Output:
 
