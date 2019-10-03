@@ -8,10 +8,15 @@ Gofherd provides:
   - You can configure number of gophers to run the tasks.
 - Monitoring
   - Current state is exposed as Prometheus compatible metrics on `/metrics`
+  - Metrics: `gofherd_success_total`, `gofherd_retry_total`, `gofherd_failure_total`
 - Dynamic parallelism
   - Using `GET`/`PATCH` calls on `/herd`
 
 ### Example
+
+```
+go get github.com/darshanime/gofherd
+```
 
 ```go
 package main
@@ -63,6 +68,7 @@ func main() {
 ```
 
 Get current herd size: `curl -XGET localhost:5555/herd`
+
 Now, we can increase the herd size using `curl -XPATCH 127.0.0.1:5555/herd -d '{"num": 10}'`
 
 Output:
@@ -134,10 +140,10 @@ logger := log.New(os.Stdout, "gofherd:", log.Ldate|log.Ltime|log.Lshortfile)
 herd.SetLogger(logger)
 ```
 
-#### Contributing
+### Contributing
 
 Run the tests
 
-```bash
+```
 go test -race -v ./...
 ```
