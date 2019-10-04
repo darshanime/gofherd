@@ -8,11 +8,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
-func drainOutput(output <-chan Work) {
-	for range output {
-	}
-}
-
 func getBasicGopherd(maxRetries, workUnits, gofherdSize int, status Status) *Gofherd {
 	gf := New(func(w *Work) Status { return status })
 	gf.SetHerdSize(int64(gofherdSize))
@@ -213,10 +208,10 @@ func TestProcessingLogicMakesUpdatesToWork(t *testing.T) {
 }
 
 func TestGopherdUpdateHerdSize(t *testing.T) {
-	maxRetries := 0
+	maxRetries := 10
 	workUnits := 1
 	gofherdSize := 1
-	gf := getBasicGopherd(maxRetries, workUnits, gofherdSize, Success)
+	gf := getBasicGopherd(maxRetries, workUnits, gofherdSize, Retry)
 	gf.Start()
 	status, msg := gf.updateHerdSize(-1)
 	expectedMsg := "Herd size cannot be negative"
@@ -242,6 +237,9 @@ func TestGopherdUpdateHerdSize(t *testing.T) {
 		t.Fatalf("did not get the expected response on trying to set positive herd size. \nexpected: msg: %s, status: %s, size: %d\ngot: msg: %s, status: %s, size: %d", expectedMsg, Success, 1, msg, status, gf.herdSize)
 	}
 
-	drainOutput(gf.OutputChan())
+	<-gf.OutputChan()
+	for range gf.OutputChan() {
+		t.Fatalf("got unexpected work result\n")
+	}
 	assertAllChannelsClosed(gf, t)
 }
