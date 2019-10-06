@@ -140,6 +140,10 @@ logger := log.New(os.Stdout, "gofherd:", log.Ldate|log.Ltime|log.Lshortfile)
 herd.SetLogger(logger)
 ```
 
+### Deploying
+
+There is a docker compose deployment at [github.com/darshanime/gofherd-deploy](https://github.com/darshanime/gofherd-deploy) you can refer to jumpstart your custom thing.
+
 ### Contributing
 
 Run the tests
