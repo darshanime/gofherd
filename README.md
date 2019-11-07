@@ -1,3 +1,6 @@
+<p align="center"><img src="./logo.png"></p>
+<p align="center"><b>Herd of gophers at your service</b></p>
+
 ## Gofherd
 
 Gofherd (`gof-herd`), is a small framework for running user defined functions with bounded parallelism. 
