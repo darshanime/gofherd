@@ -46,6 +46,12 @@ func TestHerdGet(t *testing.T) {
 			status, http.StatusOK)
 	}
 
+	contentTypeHeaderValue := resp.Result().Header["Content-Type"][0]
+	if contentTypeHeaderValue != "application/json" {
+		t.Errorf("handler returned wrong value for content type: got %v want %v",
+			contentTypeHeaderValue, "application/json")
+	}
+
 	expected := `{"num":15,"msg":"success"}`
 	if resp.Body.String() != expected {
 		t.Errorf("handler returned unexpected body: got %v want %v",
@@ -73,6 +79,12 @@ func TestHerdPatch(t *testing.T) {
 	if status := resp.Code; status != http.StatusOK {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusOK)
+	}
+
+	contentTypeHeaderValue := resp.Result().Header["Content-Type"][0]
+	if contentTypeHeaderValue != "application/json" {
+		t.Errorf("handler returned wrong value for content type: got %v want %v",
+			contentTypeHeaderValue, "application/json")
 	}
 
 	expected := `{"num":10,"msg":"success"}`

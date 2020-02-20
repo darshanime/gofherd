@@ -13,6 +13,7 @@ type herd struct {
 
 func (gf *Gofherd) herdHandler(w http.ResponseWriter, r *http.Request) {
 	var response []byte
+	w.Header().Set("Content-Type", "application/json")
 	switch r.Method {
 	case http.MethodGet:
 		foo := herd{Num: gf.herdSize, Msg: "success"}
