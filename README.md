@@ -126,6 +126,8 @@ The `Body` field can be anything that makes sense for the usecase at hand. It is
 For sending work, `gf.SendWork` can be used. It is a blocking call and will return when a member of the herd is accepts the work.
 On calling `gf.OutputChan()`, a receive only channel `<-chan Work` is returned which can be used to read the status for successfully processed work units. It will be closed by gofherd on completion.
 
+Callbacks can be registered for Success, Retry and Failures. The corresponding function will be called when the processing work function returns with the assigned status. **Make sure the callbacks are concurrent safe**. 
+
 #### Logging
 
 Gofherd accepts 

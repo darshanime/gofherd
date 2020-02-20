@@ -2,6 +2,7 @@ package gofherd
 
 import (
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -156,6 +157,73 @@ func TestMetricIncrementOnPushToOutputChanWithFailure(t *testing.T) {
 			t.Fatalf("did not receive expected val in failure metric, expected: %f, got: %f\n", expectedNewVal, newVal)
 		}
 	}
+	assertAllChannelsClosed(gf, t)
+}
+
+func TestSuccessCallbackIsCalledOnPushToOutputChanWithSuccess(t *testing.T) {
+	maxRetries := 0
+	workUnits := 10
+	gofherdSize := 10
+	gf := getBasicGopherd(maxRetries, workUnits, gofherdSize, Success)
+
+	successCallbackCounter := int64(0)
+	successCallback := func(w *Work) { atomic.AddInt64(&successCallbackCounter, 1) }
+	gf.AddSuccessCallback(successCallback)
+
+	gf.Start()
+
+	for i := 0; i < workUnits; i++ {
+		<-gf.output.hose
+	}
+	if successCallbackCounter != int64(workUnits) {
+		t.Fatalf("did not receive expected success callback behaviour, expected: %d, got: %d\n", workUnits, successCallbackCounter)
+	}
+
+	assertAllChannelsClosed(gf, t)
+}
+
+func TestFailureCallbackIsCalledOnPushToOutputChanWithFailure(t *testing.T) {
+	maxRetries := 0
+	workUnits := 10
+	gofherdSize := 10
+	gf := getBasicGopherd(maxRetries, workUnits, gofherdSize, Failure)
+
+	failureCallbackCounter := int64(0)
+	failureCallback := func(w *Work) { atomic.AddInt64(&failureCallbackCounter, 1) }
+	gf.AddFailureCallback(failureCallback)
+
+	gf.Start()
+
+	for i := 0; i < workUnits; i++ {
+		<-gf.output.hose
+	}
+	if failureCallbackCounter != int64(workUnits) {
+		t.Fatalf("did not receive expected failure callback behaviour, expected: %d, got: %d\n", workUnits, failureCallbackCounter)
+	}
+
+	assertAllChannelsClosed(gf, t)
+}
+
+func TestRetryCallbackIsCalledOnPushToOutputChanWithRetry(t *testing.T) {
+	maxRetries := 5
+	workUnits := 7
+	gofherdSize := 11
+	gf := getBasicGopherd(maxRetries, workUnits, gofherdSize, Retry)
+
+	retryCallbackCounter := int64(0)
+	retryCallback := func(w *Work) { atomic.AddInt64(&retryCallbackCounter, 1) }
+	gf.AddRetryCallback(retryCallback)
+
+	gf.Start()
+
+	for i := 0; i < workUnits; i++ {
+		<-gf.output.hose
+	}
+	expectedRetryCallbackCounter := workUnits * maxRetries
+	if retryCallbackCounter != int64(expectedRetryCallbackCounter) {
+		t.Fatalf("did not receive expected retry callback behaviour, expected: %d, got: %d\n", expectedRetryCallbackCounter, retryCallbackCounter)
+	}
+
 	assertAllChannelsClosed(gf, t)
 }
 

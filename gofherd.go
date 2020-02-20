@@ -15,6 +15,9 @@ type Gofherd struct {
 	retry           queue
 	quit            chan struct{}
 	processingLogic func(*Work) Status
+	successCallback func(*Work)
+	retryCallback   func(*Work)
+	failureCallback func(*Work)
 	herdSize        int64
 	maxRetries      int64
 	addr            string
@@ -38,6 +41,21 @@ func New(processingLogic func(*Work) Status) *Gofherd {
 // SetLogger is used to setup logging. If not specified, gofherd emits no logs.
 func (gf *Gofherd) SetLogger(l Logger) {
 	gf.logger = l
+}
+
+// AddSuccessCallback is used to setup logging. If not specified, gofherd emits no logs.
+func (gf *Gofherd) AddSuccessCallback(f func(*Work)) {
+	gf.successCallback = f
+}
+
+// AddRetryCallback is used to setup logging. If not specified, gofherd emits no logs.
+func (gf *Gofherd) AddRetryCallback(f func(*Work)) {
+	gf.retryCallback = f
+}
+
+// AddFailureCallback is used to setup logging. If not specified, gofherd emits no logs.
+func (gf *Gofherd) AddFailureCallback(f func(*Work)) {
+	gf.failureCallback = f
 }
 
 // SendWork enques Work onto the input chan.
@@ -94,10 +112,10 @@ func (gf *Gofherd) SetMaxRetries(num int64) {
 
 func (gf *Gofherd) pushToOutputChan(work Work) {
 	if work.Status() == Success {
-		incrementSuccessMetric()
+		gf.registerSuccess(&work)
 	}
 	if work.Status() == Failure {
-		incrementFailureMetric()
+		gf.registerFailure(&work)
 	}
 	gf.logger.Printf("Pusing to output, work: %s\n", work.ID)
 	gf.output.hose <- work
@@ -121,7 +139,7 @@ func (gf *Gofherd) closeRetryChan() {
 }
 
 func (gf *Gofherd) pushToRetryChan(work Work) {
-	incrementRetryMetric()
+	gf.registerRetry(&work)
 	work.incrementRetries()
 	go func() {
 		gf.retry.hose <- work
@@ -190,6 +208,27 @@ func (gf *Gofherd) handleInput(work Work) {
 	}
 	work.setStatus(Failure)
 	gf.pushToOutputChan(work)
+}
+
+func (gf *Gofherd) registerRetry(w *Work) {
+	if gf.retryCallback != nil {
+		gf.retryCallback(w)
+	}
+	incrementRetryMetric()
+}
+
+func (gf *Gofherd) registerSuccess(w *Work) {
+	if gf.successCallback != nil {
+		gf.successCallback(w)
+	}
+	incrementSuccessMetric()
+}
+
+func (gf *Gofherd) registerFailure(w *Work) {
+	if gf.failureCallback != nil {
+		gf.failureCallback(w)
+	}
+	incrementFailureMetric()
 }
 
 func (gf *Gofherd) updateHerdSize(num int64) (Status, string) {
