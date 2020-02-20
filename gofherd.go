@@ -245,25 +245,27 @@ func (gf *Gofherd) updateHerdSize(num int64) (Status, string) {
 	}
 
 	if num > oldSize {
-		gf.increasedHerdBy(num - oldSize)
+		gf.IncreasedHerdBy(num - oldSize)
 	}
 
 	if num < oldSize {
-		gf.decreaseHerdBy(oldSize - num)
+		gf.DecreaseHerdBy(oldSize - num)
 	}
 
 	gf.SetHerdSize(num)
 	return Success, "success"
 }
 
-func (gf *Gofherd) increasedHerdBy(num int64) {
+// IncreasedHerdBy is used to increase the herd size given amount
+func (gf *Gofherd) IncreasedHerdBy(num int64) {
 	for i := int64(0); i < num; i++ {
 		gf.logger.Printf("Starting gofher #%d\n", i)
 		go gf.initGopher()
 	}
 }
 
-func (gf *Gofherd) decreaseHerdBy(num int64) {
+// DecreaseHerdBy is used to decrease the herd size given amount
+func (gf *Gofherd) DecreaseHerdBy(num int64) {
 	for i := int64(0); i < num; i++ {
 		gf.quit <- struct{}{}
 	}
@@ -276,5 +278,5 @@ func (gf *Gofherd) Start() {
 	mux.Handle("/herd", http.HandlerFunc(gf.herdHandler))
 	mux.Handle("/metrics", promhttp.Handler())
 	go http.ListenAndServe(gf.addr, mux)
-	gf.increasedHerdBy(gf.herdSize)
+	gf.IncreasedHerdBy(gf.herdSize)
 }
