@@ -43,11 +43,16 @@ func ReviewOutput(outputChan <-chan gf.Work) {
 	}
 }
 
+func SuccessCallback(work *gf.Work) {
+	fmt.Printf("received success for site: %s\n", work.Body.(string))
+}
+
 func main() {
 	herd := gf.New(ProcessWork)
 	herd.SetHerdSize(5)
 	herd.SetMaxRetries(100)
 	herd.SetAddr("127.0.0.1:5555")
+	herd.AddSuccessCallback(SuccessCallback)
 	go LoadWork(herd)
 	herd.Start()
 	ReviewOutput(herd.OutputChan())
